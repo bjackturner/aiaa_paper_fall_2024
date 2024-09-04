@@ -1,38 +1,46 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-# Shock Relations 
-def th_tbm(m,b, gamma): #explicit form of the theta-beta-M relation
-    th = np.arctan((2*(m*np.sin(b))**2-2)/(m**2*(gamma+np.cos(2*b))+2)/np.tan(b))
+# Shock Relations theta-beta-mach
+def th_tbm(mach, wave_angle, gamma): 
+    th = np.arctan((2*(mach*np.sin(wave_angle))**2-2)/(mach**2*(gamma+np.cos(2*wave_angle))+2)/np.tan(wave_angle))
     return abs(th)
 
-def calculateM2(M1,gamma,beta):
-    if beta == np.pi/2:
-        M2 = np.sqrt((M1**2 + (2 /(gamma - 1))) / (((2 * gamma)/(gamma - 1)) * M1**2 - 1))
-        PR = 1 + (2 * gamma / (gamma + 1)) * (M1**2 - 1)
-        denR = ((gamma + 1) * M1**2)/(2 + ((gamma - 1) * M1**2))
-        TR = ((2 * gamma * M1**2 - (gamma - 1)) * ((gamma - 1) * M1**2 + 2))/((gamma + 1)**2 * M1**2)
-        return M2, PR, denR, TR
-    
-    elif beta < np.pi/2:
-        th = th_tbm(M1, beta, gamma)
-        Mn = M1 * np.sin(beta)
-        M2 = (np.sqrt((Mn**2 + (2 /(gamma - 1))) / (((2 * gamma)/(gamma - 1)) * Mn**2 - 1)))/np.sin(beta - th)
-        PR = 1 + (2 * gamma / (gamma + 1)) * (Mn**2 - 1)
-        denR = ((gamma + 1) * Mn**2)/(2 + ((gamma - 1) * Mn**2))
-        TR = ((2 * gamma * Mn**2 - (gamma - 1)) * ((gamma - 1) * Mn**2 + 2))/((gamma + 1)**2 * Mn**2)
-        return M2, PR, denR, TR
-    
-def calculateMn2(M1, gamma, beta):
-    if beta == np.pi/2:
-        Mn1 = M1
-        M2 = np.sqrt((M1**2 + (2 /(gamma - 1))) / (((2 * gamma)/(gamma - 1)) * M1**2 - 1))
+# Calculates mach 2 as well as pressure, density, and temperature ratio from mach 1 for an oblique shock and normal shock
+def calculate_mach_2(mach_1,gamma,wave_angle):
 
-        return Mn1, M2
+    # Normal shock
+    if wave_angle == np.pi/2:
+        mach_2 = np.sqrt((mach_1**2 + (2 /(gamma - 1))) / (((2 * gamma)/(gamma - 1)) * mach_1**2 - 1))
+        pressure_ratio = 1 + (2 * gamma / (gamma + 1)) * (mach_1**2 - 1)
+        density_ratio = ((gamma + 1) * mach_1**2)/(2 + ((gamma - 1) * mach_1**2))
+        temperature_ratio = ((2 * gamma * mach_1**2 - (gamma - 1)) * ((gamma - 1) * mach_1**2 + 2))/((gamma + 1)**2 * mach_1**2)
+        return mach_2, pressure_ratio, density_ratio, temperature_ratio
     
-    elif beta < np.pi/2:
-        th = th_tbm(M1, beta, gamma)
-        Mn1 = M1 * np.sin(beta)
+    # Oblique shock
+    elif wave_angle < np.pi/2:
+        th = th_tbm(mach_1, wave_angle, gamma)
+        Mn = mach_1 * np.sin(wave_angle)
+        mach_2 = (np.sqrt((Mn**2 + (2 /(gamma - 1))) / (((2 * gamma)/(gamma - 1)) * Mn**2 - 1)))/np.sin(wave_angle - th)
+        pressure_ratio = 1 + (2 * gamma / (gamma + 1)) * (Mn**2 - 1)
+        density_ratio = ((gamma + 1) * Mn**2)/(2 + ((gamma - 1) * Mn**2))
+        temperature_ratio = ((2 * gamma * Mn**2 - (gamma - 1)) * ((gamma - 1) * Mn**2 + 2))/((gamma + 1)**2 * Mn**2)
+        return mach_2, pressure_ratio, density_ratio, temperature_ratio
+
+# Calculates the normal mach number for an oblique and normal shock (kinda)
+def calculate_mach_norm_2(mach_1, gamma, wave_angle):
+
+    # If normal shock
+    if wave_angle == np.pi/2:
+        Mn1 = mach_1
+        mach_2 = np.sqrt((mach_1**2 + (2 /(gamma - 1))) / (((2 * gamma)/(gamma - 1)) * mach_1**2 - 1))
+
+        return Mn1, mach_2
+    
+    # If oblique shock
+    elif wave_angle < np.pi/2:
+        th = th_tbm(mach_1, wave_angle, gamma)
+        Mn1 = mach_1 * np.sin(wave_angle)
         Mn2 = (np.sqrt((Mn1**2 + (2 /(gamma - 1))) / (((2 * gamma)/(gamma - 1)) * Mn1**2 - 1)))
 
         return Mn1, Mn2
@@ -120,38 +128,38 @@ def findAlphaComp(alpha, theta):
 
     return alphaX, alphaY
 
-def calculateOmega(alpha, M1, string, theta, beta):
+def calculateOmega(alpha, mach_1, string, theta, wave_angle):
 
     if string == 'fast':
-        omega1 = (np.sin(theta + beta) + 1/M1) * alpha/np.sin(beta)
+        omega1 = (np.sin(theta + wave_angle) + 1/mach_1) * alpha/np.sin(wave_angle)
 
     elif string == 'slow':
-        omega1 = (np.sin(theta + beta) - 1/M1) * alpha/np.sin(beta)
+        omega1 = (np.sin(theta + wave_angle) - 1/mach_1) * alpha/np.sin(wave_angle)
 
     elif string == 'damped':
-        Mn1, Mn2 = calculateMn2(M1, gamma, beta)
+        Mn1, Mn2 = calculate_mach_norm_2(mach_1, gamma, wave_angle)
         alphaX, alphaY = findAlphaComp(alpha, theta)
-        v0 = np.cos(beta)/np.sin(beta)
+        v0 = np.cos(wave_angle)/np.sin(wave_angle)
 
         omega1 = alphaX * (Mn1**2 - 1)/Mn1**2 + v0 * alphaY
 
     else:
-        omega1 = np.sin(theta + beta) * alpha/np.sin(beta)
+        omega1 = np.sin(theta + wave_angle) * alpha/np.sin(wave_angle)
 
     return omega1
 
-def calulateThetaV2(alpha, Mn1,theta,beta, ub):
-    omega1 = calculateOmega(alpha, Mn1, 'vorticity', theta, beta)
+def calulateThetaV2(alpha, Mn1,theta,wave_angle, ub):
+    omega1 = calculateOmega(alpha, Mn1, 'vorticity', theta, wave_angle)
     omega2 = omega1/ub
 
-    alphaQ = omega2 - (np.cos(beta)/(np.sin(beta)*ub) * alphaY)
+    alphaQ = omega2 - (np.cos(wave_angle)/(np.sin(wave_angle)*ub) * alphaY)
     alphaP = alphaY
 
     return (np.arcsin(alphaP/np.sqrt(alphaQ**2 + alphaP**2)) + np.pi/2) + (sigma2 * np.arcsin(alphaP*Mn2/np.sqrt(alphaQ**2 + alphaP**2)) - np.pi/2)
 
 gamma = 5/3 # Right
-M1 = 8 # Right
-BETA = [90 * np.pi/180,65.89 * np.pi/180,35.09 * np.pi/180] # Right
+mach_1 = 8 # Right
+beta_list = [90 * np.pi/180, 65.89 * np.pi/180, 35.09 * np.pi/180] # Right
 
 sigma1 = 1
 sigma2 = 1
@@ -159,21 +167,19 @@ numPoints = 100
 
 alpha = 0.056 # Right
 
-string1 = 'entropy' # entropy # vorticity
+string1 = 'fast' # entropy # vorticity
 string2 = 'fast'
 
 Angle = 'lower'
 
-for beta in BETA:
+for j, wave_angle in enumerate(beta_list):
 
-    i = 0
+    Mn1, Mn2 = calculate_mach_norm_2(mach_1, gamma, wave_angle) # Right
+    mach_2, pressure_ratio, density_ratio, temperature_ratio = calculate_mach_2(mach_1, gamma, wave_angle) # Right
+    Mn1, Mn2 = calculate_mach_norm_2(mach_1, gamma, wave_angle) 
+    ub = np.sqrt(temperature_ratio) * Mn2/Mn1
 
-    Mn1, Mn2 = calculateMn2(M1, gamma, beta) # Right
-    M2, PR, denR, TR = calculateM2(M1, gamma, beta) # Right
-    Mn1, Mn2 = calculateMn2(M1, gamma, beta) 
-    ub = np.sqrt(TR) * Mn2/Mn1
-
-    beta2 = th_tbm(M1,beta, gamma) # Right
+    beta2 = th_tbm(mach_1,wave_angle, gamma) # Right
 
     s = np.sqrt((gamma+1)/2 * ub*(1-ub))
     thetaAc = np.arcsin(1/np.sqrt(1 + s**2))
@@ -190,29 +196,29 @@ for beta in BETA:
     elif Angle == 'upper':
         THETA = np.concatenate((np.linspace(-np.pi/2, -critAngleLower*np.pi/180, numPoints//2),np.linspace(critAngleLower*np.pi/180, np.pi/2, numPoints//2)))
 
-    if beta == 90 * np.pi/180:
+    if wave_angle == 90 * np.pi/180:
         Normal = np.zeros_like(THETA)
 
-    elif beta == 65.89 * np.pi/180:
+    elif wave_angle == 65.89 * np.pi/180:
         Strong = np.zeros_like(THETA)
 
-    elif beta == 35.09 * np.pi/180:
+    elif wave_angle == 35.09 * np.pi/180:
         Weak = np.zeros_like(THETA)
 
-    for theta in THETA:
+    for i, theta in enumerate(THETA):
         alphaX, alphaY = findAlphaComp(alpha, theta) # Right
 
-        omega1 = calculateOmega(alpha, Mn1, string1, theta, beta)
+        omega1 = calculateOmega(alpha, Mn1, string1, theta, wave_angle)
         omega2 = omega1/ub
 
-        alphaQ = omega2 - (np.cos(beta)/(np.sin(beta)*ub) * alphaY)
+        alphaQ = omega2 - (np.cos(wave_angle)/(np.sin(wave_angle)*ub) * alphaY)
         alphaP = alphaY
 
         theta2 = (np.arcsin(alphaP/np.sqrt(alphaQ**2 + alphaP**2)) + np.pi/2) + (sigma2 * np.arcsin(alphaP*Mn2/np.sqrt(alphaQ**2 + alphaP**2)) - np.pi/2)
         #print((alphaP / np.sin(theta2)) - (alpha * np.sin(theta)/np.sin(theta2)))
         # print(np.sqrt(alphaX**2 + alphaY**2),np.sqrt(alphaP**2 + alphaQ**2))
 
-        thetaV2 = calulateThetaV2(alpha, Mn1,theta,beta,ub)
+        thetaV2 = calulateThetaV2(alpha, Mn1,theta,wave_angle,ub)
 
         Ec2 = makeEc2(string2, theta, Mn2, ub, gamma, alphaQ, alphaP, omega1, thetaV2, theta2)
         B = makeB(ub, gamma)
@@ -222,33 +228,39 @@ for beta in BETA:
 
         #print(Ci1- np.linalg.inv(Ec2)[:,0])
 
-        if beta == 90 * np.pi/180:
+        if wave_angle == 90 * np.pi/180:
             Normal[i] = ub*(np.dot(np.dot(Ec2,B),np.transpose(Ci1))[0])
             
-
-        elif beta == 65.89 * np.pi/180:
+        elif wave_angle == 65.89 * np.pi/180:
             Strong[i] = ub*(np.dot(np.dot(Ec2,B),np.transpose(Ci1))[0])
 
-        elif beta == 35.09 * np.pi/180:
+        elif wave_angle == 35.09 * np.pi/180:
             Weak[i] = ub*(np.dot(np.dot(Ec2,B),np.transpose(Ci1))[0])
 
-        i += 1
-
-    if beta == 90 * np.pi/180:
+    if wave_angle == 90 * np.pi/180:
+        plt.figure(j + 1)
         plt.plot(THETA/np.pi*180, Normal)
+        plt.xlabel('Theta (Degrees)')
+        plt.ylabel('Transmission Coefficient')
+        plt.grid()
 
-    elif beta == 65.89 * np.pi/180:
+    elif wave_angle == 65.89 * np.pi/180:
+        plt.figure(j + 1)
         plt.plot(THETA/np.pi*180, Strong)
+        plt.xlabel('Theta (Degrees)')
+        plt.ylabel('Transmission Coefficient')
+        plt.grid()
 
-    elif beta == 35.09 * np.pi/180:
+    elif wave_angle == 35.09 * np.pi/180:
+        plt.figure(j + 1)
         plt.plot(THETA/np.pi*180, Weak)
+        plt.xlabel('Theta (Degrees)')
+        plt.ylabel('Transmission Coefficient')
+        plt.grid()
 
-plt.xlabel('Theta (Degrees)')
-plt.ylabel('Transmission Coefficient')
-plt.grid()
-# plt.ylim([0,20])
-# plt.xlim([-66,66])
 plt.show()
+
+
 
 
 
